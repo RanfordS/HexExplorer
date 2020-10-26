@@ -47,9 +47,10 @@ unsigned int history_end = 0;
 #define HISTORY (history_log[history_end] + bufferpos)
 
 #define REPORT_SIZE 64
+int report_error = 0;
 char report[REPORT_SIZE] = {};
 
-#define ERROR(s) sprintf (report, "\033[1;31m[!] %s\033[0m", s)
+#define ERROR(s) {sprintf (report, "[!] %s", s); report_error = 1;}
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
@@ -370,47 +371,20 @@ int main (int argc, char** argv)
     luaL_openlibs (luaState);
 
     // register lua functions
-    lua_pushcfunction (luaState, l_quit);
-    lua_setglobal (luaState, "quit");
-
-    lua_pushcfunction (luaState, l_clear);
-    lua_setglobal (luaState, "clear");
-
-    lua_pushcfunction (luaState, l_print);
-    lua_setglobal (luaState, "print");
-
-    lua_pushcfunction (luaState, l_push);
-    lua_setglobal (luaState, "push");
-
-    lua_pushcfunction (luaState, l_back);
-    lua_setglobal (luaState, "back");
-
-    lua_pushcfunction (luaState, l_pop);
-    lua_setglobal (luaState, "pop");
-
-    lua_pushcfunction (luaState, l_delete);
-    lua_setglobal (luaState, "delete");
-
-    lua_pushcfunction (luaState, l_seek);
-    lua_setglobal (luaState, "seek");
-
-    lua_pushcfunction (luaState, l_note);
-    lua_setglobal (luaState, "note");
-
-    lua_pushcfunction (luaState, l_advance);
-    lua_setglobal (luaState, "advance");
-
-    lua_pushcfunction (luaState, l_tell);
-    lua_setglobal (luaState, "tell");
-
-    lua_pushcfunction (luaState, l_hex);
-    lua_setglobal (luaState, "hex");
-
-    lua_pushcfunction (luaState, l_char);
-    lua_setglobal (luaState, "char");
-
-    lua_pushcfunction (luaState, l_int);
-    lua_setglobal (luaState, "int");
+    lua_pushcfunction (luaState, l_quit);    lua_setglobal (luaState, "quit");
+    lua_pushcfunction (luaState, l_clear);   lua_setglobal (luaState, "clear");
+    lua_pushcfunction (luaState, l_print);   lua_setglobal (luaState, "print");
+    lua_pushcfunction (luaState, l_push);    lua_setglobal (luaState, "push");
+    lua_pushcfunction (luaState, l_back);    lua_setglobal (luaState, "back");
+    lua_pushcfunction (luaState, l_pop);     lua_setglobal (luaState, "pop");
+    lua_pushcfunction (luaState, l_delete);  lua_setglobal (luaState, "delete");
+    lua_pushcfunction (luaState, l_seek);    lua_setglobal (luaState, "seek");
+    lua_pushcfunction (luaState, l_note);    lua_setglobal (luaState, "note");
+    lua_pushcfunction (luaState, l_advance); lua_setglobal (luaState, "advance");
+    lua_pushcfunction (luaState, l_tell);    lua_setglobal (luaState, "tell");
+    lua_pushcfunction (luaState, l_hex);     lua_setglobal (luaState, "hex");
+    lua_pushcfunction (luaState, l_char);    lua_setglobal (luaState, "char");
+    lua_pushcfunction (luaState, l_int);     lua_setglobal (luaState, "int");
 
     while (running)
     {
@@ -419,7 +393,7 @@ int main (int argc, char** argv)
 
         // terminal size and sudo-title
         ioctl (term, TIOCGWINSZ, &term_size);
-        printf ("\033[1;1H\033[1m %*s \033[0m", term_size.ws_row - 2, argv[1]);
+        printf ("\033[1;1H\033[1;48;2;70;95;75m %-*s \033[0m", term_size.ws_col - 2, argv[1]);
 
         // display history
         for (unsigned int i = history_start; i != history_end; i = (i + 1) % HISTORY_SIZE)
@@ -433,7 +407,9 @@ int main (int argc, char** argv)
         }
 
         // display report
-        printf ("\033[%i;1H%-*s", term_size.ws_row, term_size.ws_col, report);
+        if (report_error) printf ("\033[1;31m");
+        printf ("\033[%i;1H\033[48;2;60;60;60m %-*s\033[0m",
+                term_size.ws_row, term_size.ws_col - 2, report);
 
         // display stack
         for (unsigned int i = 0; i < stack_elements; ++i)
@@ -447,7 +423,8 @@ int main (int argc, char** argv)
         }
 
         // color command bar
-        printf ("\033[%i;%iH\033[48;2;100;150;110m%*s", term_size.ws_row - 1, 1, term_size.ws_col, "");
+        printf ("\033[%i;%iH\033[1;48;2;100;150;110m%*s",
+                term_size.ws_row - 1, 1, term_size.ws_col, "");
 
         // do command
         char command[1024] = {};
@@ -455,6 +432,7 @@ int main (int argc, char** argv)
         if (fgets (command, 1024, stdin))
         {
             report[0] = 0;
+            report_error = 0;
             luaL_dostring (luaState, command);
         }
     }
