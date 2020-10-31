@@ -1,6 +1,6 @@
 # HexExplorer
 
-Terminal-base binary file explorer with lua interface.
+Terminal-based binary file explorer with lua interface.
 
 ## Purpose
 
